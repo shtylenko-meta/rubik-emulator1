@@ -662,13 +662,13 @@ class Solver:
             print("  [autosolve] ERROR: Duplicate pieces detected")
             return []
 
-        print("  [autosolve] Phase 1 search...")
-        for max_depth in range(21):
-            self._solution = []
-            if self._phase1_search(cc, max_depth, -1):
-                return self._solution
-        print("  [autosolve] No solution found!")
-        return []
+        # TODO: Run iterative deepening Phase 1 search.
+        # Try increasing max_depth values (up to 20).
+        # Reset self._solution before each depth attempt.
+        # Call self._phase1_search(cc, max_depth, -1) which returns True
+        # if a solution is found (stored in self._solution).
+        # Return self._solution when found, or an empty list if no solution exists.
+        raise NotImplementedError("TODO: implement the iterative deepening search loop")
 
     def _phase1_search(self, cc: CubieCube, depth: int, last_move: int) -> bool:
         co_idx = encode_co(cc.co)
