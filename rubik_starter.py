@@ -168,47 +168,11 @@ class RubiksCube:
         return {fn: self.faces[fn].tolist() for fn in self.faces}
 
     def as_cubie_cube(self) -> 'CubieCube':
-        """Convert current facelet state to a CubieCube representation."""
-        cc = CubieCube()
-        u_col = self.faces['U'][1, 1]
-        d_col = self.faces['D'][1, 1]
+        """Convert current facelet state to a CubieCube representation.
 
-        # Corners
-        for pos in range(8):
-            facets = _CORNER_FACETS[pos]
-            actual_colors = [self.faces[f][r][c] for f, r, c in facets]
-            actual_set = set(actual_colors)
-            found = False
-            for piece in range(8):
-                piece_set = set(_CORNER_COLORS[piece])
-                if actual_set == piece_set:
-                    cc.cp[pos] = piece
-                    for k in range(3):
-                        if actual_colors[k] in (u_col, d_col):
-                            cc.co[pos] = k
-                            break
-                    found = True
-                    break
-            if not found:
-                raise ValueError(f"Could not identify corner at position {pos}: {actual_colors}")
-
-        # Edges
-        for pos in range(12):
-            facets = _EDGE_FACETS[pos]
-            actual_colors = [self.faces[f][r][c] for f, r, c in facets]
-            actual_set = set(actual_colors)
-            found = False
-            for piece in range(12):
-                piece_set = set(_EDGE_COLORS[piece])
-                if actual_set == piece_set:
-                    cc.ep[pos] = piece
-                    ref_color = _EDGE_COLORS[piece][0]
-                    cc.eo[pos] = 0 if actual_colors[0] == ref_color else 1
-                    found = True
-                    break
-            if not found:
-                raise ValueError(f"Could not identify edge at position {pos}: {actual_colors}")
-        return cc
+        TODO: Implement this method.
+        """
+        raise NotImplementedError("TODO: implement as_cubie_cube")
 
 
 # ---------------------------------------------------------------------------
@@ -302,123 +266,19 @@ def _init_color_tables():
 _init_color_tables()
 
 
-def facelets_to_cubie(faces: Dict[str, np.ndarray]) -> CubieCube:
-    """DEPRECATED: Use RubiksCube.as_cubie_cube() instead.
-    Convert a facelet dict to a CubieCube.
-    """
-    temp_cube = RubiksCube()
-    temp_cube.faces = faces
-    return temp_cube.as_cubie_cube()
-
 
 # ---------------------------------------------------------------------------
 # Coordinate encoding/decoding
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Coordinate encoding/decoding
-# ---------------------------------------------------------------------------
-def encode_co(co: List[int]) -> int:
-    """Encode corner orientations (first 7) as base-3 number. Range: 0..2186."""
-    n = 0
-    for i in range(7):
-        n = n * 3 + co[i]
-    return n
-
-def decode_co(n: int) -> List[int]:
-    """Decode corner orientation index to 8-element list."""
-    co = [0] * 8
-    s = 0
-    for i in range(6, -1, -1):
-        co[i] = n % 3
-        n //= 3
-        s += co[i]
-    co[7] = (3 - s % 3) % 3
-    return co
-
-def encode_eo(eo: List[int]) -> int:
-    """Encode edge orientations (first 11) as base-2 number. Range: 0..2047."""
-    n = 0
-    for i in range(11):
-        n = n * 2 + eo[i]
-    return n
-
-def decode_eo(n: int) -> List[int]:
-    """Decode edge orientation index to 12-element list."""
-    eo = [0] * 12
-    s = 0
-    for i in range(10, -1, -1):
-        eo[i] = n % 2
-        n //= 2
-        s += eo[i]
-    eo[11] = s % 2  # parity constraint
-    return eo
-
-# Slice coordinate: which 4 of the 12 edge positions contain slice edges (8-11)
-# We use combinatorial number system to map C(12,4) = 495 combinations.
-
-# Precompute all C(12,4) combinations sorted lexicographically
-_SLICE_COMBOS = list(combinations(range(12), 4))
-_SLICE_TO_IDX = {c: i for i, c in enumerate(_SLICE_COMBOS)}
-
-def encode_slice(ep: List[int]) -> int:
-    """Given edge permutation, find which positions contain slice edges (pieces 8-11).
-    Returns index 0..494."""
-    positions = tuple(sorted(i for i in range(12) if ep[i] >= 8))
-    return _SLICE_TO_IDX[positions]
-
-def decode_slice(idx: int) -> Tuple[int, ...]:
-    """Return the 4 positions that contain slice edges for this index."""
-    return _SLICE_COMBOS[idx]
-
-# The SOLVED slice state is when slice edges 8,9,10,11 are at positions 8,9,10,11
-_SOLVED_SLICE_IDX = _SLICE_TO_IDX[(8, 9, 10, 11)]
-
-# Corner permutation encoding using Lehmer code
-def encode_cp(cp: List[int]) -> int:
-    """Encode corner permutation using Lehmer code. Range: 0..40319."""
-    n = 0
-    for i in range(8):
-        count = 0
-        for j in range(i + 1, 8):
-            if cp[j] < cp[i]:
-                count += 1
-        n = n * (8 - i) + count
-    return n
-
-def encode_ep8(ep: List[int]) -> int:
-    """Encode the permutation of the first 8 edges using Lehmer code. Range: 0..40319."""
-    # Phase 2 only: the first 8 edges stay in first 8 positions
-    sub = ep[:8]
-    n = 0
-    for i in range(8):
-        count = 0
-        for j in range(i + 1, 8):
-            if sub[j] < sub[i]:
-                count += 1
-        n = n * (8 - i) + count
-    return n
-
-def encode_eslice(ep: List[int]) -> int:
-    """Encode the permutation of slice edges (positions 8-11). Range: 0..23."""
-    sub = [ep[i] - 8 for i in range(8, 12)]  # normalize to 0-3
-    n = 0
-    for i in range(4):
-        count = 0
-        for j in range(i + 1, 4):
-            if sub[j] < sub[i]:
-                count += 1
-        n = n * (4 - i) + count
-    return n
-
-def get_permutation_parity(p: List[int]) -> int:
-    """Calculate the parity of a permutation (0 for even, 1 for odd)."""
-    p = list(p)
-    parity = 0
-    for i in range(len(p)):
-        for j in range(i + 1, len(p)):
-            if p[i] > p[j]:
-                parity += 1
-    return parity % 2
+# TODO: Implement the following coordinate encoding/decoding functions needed
+# by the solver. These should include functions to:
+#   - Encode/decode corner orientation (8 corners, orientation 0-2, range 0..2186)
+#   - Encode/decode edge orientation (12 edges, orientation 0-1, range 0..2047)
+#   - Encode/decode slice edge positions (which 4 of 12 positions hold slice edges 8-11, range 0..494)
+#   - Encode corner permutation (8!, range 0..40319)
+#   - Encode first-8 edge permutation (8!, range 0..40319)
+#   - Encode slice edge permutation (4!, range 0..23)
+#   - Calculate permutation parity (0=even, 1=odd)
 
 
 # ---------------------------------------------------------------------------
